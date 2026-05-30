@@ -1,0 +1,860 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>JB-Routine — Smart Habit Tracker</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0a0f1a;
+    --bg2: #111827;
+    --card: #1a2235;
+    --card2: #1f2b40;
+    --border: rgba(168,255,120,0.12);
+    --accent: #A8FF78;
+    --accent2: #78ffd6;
+    --accent-dim: rgba(168,255,120,0.15);
+    --text: #f0f4f8;
+    --text2: #8899aa;
+    --text3: #4a5568;
+    --red: #ff6b6b;
+    --orange: #ffaa44;
+    --glow: 0 0 24px rgba(168,255,120,0.25);
+    --shadow: 0 8px 32px rgba(0,0,0,0.4);
+    --radius: 18px;
+    --radius-sm: 10px;
+    --font-head: 'Syne', sans-serif;
+    --font-body: 'Inter', sans-serif;
+    --tab-h: 72px;
+  }
+  
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  html { font-size: 16px; scroll-behavior: smooth; }
+  body {
+    font-family: var(--font-body);
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    overflow-x: hidden;
+    user-select: none;
+    -webkit-tap-highlight-color: transparent;
+  }
+  #app {
+    max-width: 430px;
+    margin: 0 auto;
+    min-height: 100vh;
+    position: relative;
+    padding-bottom: calc(var(--tab-h) + 16px);
+  }
+
+  /* ─── NAV ─── */
+  .top-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 20px 20px 0;
+  }
+  .top-bar .logo {
+    font-family: var(--font-head);
+    font-size: 1.4rem;
+    font-weight: 800;
+    color: var(--accent);
+    letter-spacing: -0.5px;
+  }
+  .top-bar .logo span { color: var(--text); }
+  .streak-badge {
+    background: var(--accent-dim);
+    border: 1px solid var(--border);
+    padding: 6px 14px;
+    border-radius: 999px;
+    font-size: 0.82rem;
+    font-weight: 600;
+    color: var(--accent);
+    display: flex;
+    align-items: center;
+    gap: 5px;
+  }
+
+  /* ─── TABS ─── */
+  .tab-bar {
+    position: fixed;
+    bottom: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 100%;
+    max-width: 430px;
+    height: var(--tab-h);
+    background: rgba(26, 34, 53, 0.9);
+    border-top: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: space-around;
+    z-index: 100;
+    backdrop-filter: blur(15px);
+  }
+  .tab-btn {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    background: none;
+    border: none;
+    cursor: pointer;
+    color: var(--text3);
+    font-size: 0.68rem;
+    font-family: var(--font-body);
+    font-weight: 600;
+    transition: all 0.2s;
+    padding: 8px 16px;
+    position: relative;
+  }
+  .tab-btn .icon { font-size: 1.3rem; transition: transform 0.2s; }
+  .tab-btn.active { color: var(--accent); }
+  .tab-btn.active .icon { transform: translateY(-4px) scale(1.1); }
+  .tab-btn.active::after {
+    content: '';
+    position: absolute;
+    bottom: 2px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 18px;
+    height: 3px;
+    background: var(--accent);
+    border-radius: 999px;
+  }
+
+  /* ─── VIEWS ─── */
+  .view { display: none; padding: 0 16px; animation: fadeUp 0.3s ease; }
+  .view.active { display: block; }
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(12px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  /* ─── CARDS & UI ─── */
+  .card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 20px;
+    margin-bottom: 14px;
+    backdrop-filter: blur(10px);
+    transition: border-color 0.2s;
+  }
+  .card-title {
+    font-family: var(--font-head);
+    font-size: 0.75rem;
+    font-weight: 700;
+    letter-spacing: 1.2px;
+    text-transform: uppercase;
+    color: var(--text2);
+    margin-bottom: 14px;
+  }
+  .section-pad { padding-top: 16px; }
+  .row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; }
+  .row .card-title { margin-bottom: 0; }
+
+  /* ─── DASHBOARD ─── */
+  .greeting {
+    padding: 16px 20px 0;
+    font-family: var(--font-head);
+    font-size: 1.6rem;
+    font-weight: 800;
+    line-height: 1.1;
+  }
+  .greeting .sub {
+    font-size: 0.85rem;
+    color: var(--text2);
+    font-family: var(--font-body);
+    font-weight: 400;
+    margin-top: 6px;
+    display: block;
+  }
+
+  /* Progress Ring */
+  .ring-wrap { display: flex; align-items: center; gap: 20px; }
+  .ring-svg { transform: rotate(-90deg); flex-shrink: 0; }
+  .ring-bg { fill: none; stroke: var(--card2); stroke-width: 8; }
+  .ring-fill {
+    fill: none;
+    stroke-width: 8;
+    stroke-linecap: round;
+    transition: stroke-dashoffset 1s cubic-bezier(0.4,0,0.2,1), stroke 0.5s;
+  }
+  .ring-info { flex: 1; }
+  .ring-kcal {
+    font-family: var(--font-head);
+    font-size: 2.2rem;
+    font-weight: 800;
+    color: var(--accent);
+    line-height: 1;
+  }
+  .ring-kcal span { font-size: 1.2rem; color: var(--text2); font-family: var(--font-body); font-weight: 500; }
+  .ring-label { font-size: 0.85rem; color: var(--text2); margin-top: 4px; font-weight: 500; }
+  .ring-remaining { font-size: 0.9rem; color: var(--text); margin-top: 8px; font-weight: 600; }
+
+  /* Motivational Card */
+  .motiv-card {
+    background: linear-gradient(135deg, rgba(168,255,120,0.1), rgba(120,255,214,0.05));
+    border: 1px solid rgba(168,255,120,0.2);
+    border-radius: var(--radius);
+    padding: 16px 20px;
+    margin-bottom: 14px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    transition: all 0.3s ease;
+  }
+  .motiv-card.success {
+    background: linear-gradient(135deg, rgba(255,215,0,0.15), rgba(255,170,68,0.1));
+    border-color: var(--orange);
+  }
+  .motiv-emoji { font-size: 2rem; }
+  .motiv-text { font-size: 0.95rem; color: var(--text); font-weight: 600; line-height: 1.4; }
+  .motiv-sub { font-size: 0.8rem; color: var(--text2); margin-top: 3px; }
+
+  /* Stats Row */
+  .stats-row { display: flex; gap: 10px; margin-top: 14px; }
+  .stat-box {
+    flex: 1;
+    background: var(--card2);
+    border-radius: 12px;
+    padding: 12px 10px;
+    text-align: center;
+  }
+  .stat-box .val { font-family: var(--font-head); font-size: 1.3rem; font-weight: 800; color: var(--text); }
+  .stat-box .lbl { font-size: 0.7rem; color: var(--text2); margin-top: 4px; text-transform: uppercase; font-weight: 600; }
+
+  /* Water Tracker */
+  .water-bar-bg { height: 14px; background: var(--card2); border-radius: 99px; overflow: hidden; margin: 12px 0; position: relative; }
+  .water-bar-fill { height: 100%; border-radius: 99px; background: linear-gradient(90deg, #4dabf7, #74c0fc); transition: width 0.6s ease; }
+  .water-btns { display: flex; gap: 8px; margin-top: 12px; }
+  .water-btn {
+    flex: 1;
+    background: var(--card2);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 12px 0;
+    color: #4dabf7;
+    font-size: 0.85rem;
+    font-weight: 600;
+    cursor: pointer;
+    font-family: var(--font-body);
+    transition: all 0.2s;
+  }
+  .water-btn:active { transform: scale(0.95); }
+  .water-info { display: flex; justify-content: space-between; align-items: center; }
+  .water-val { font-family: var(--font-head); font-size: 1.5rem; font-weight: 800; color: #4dabf7; }
+
+  /* ─── CATALOG VIEW ─── */
+  .catalog-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 10px; }
+  .catalog-item {
+    background: var(--card2);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 16px 12px;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+  }
+  .catalog-item:hover, .catalog-item:active { background: var(--accent-dim); border-color: var(--accent); transform: translateY(-3px); }
+  .cat-icon { font-size: 2.2rem; }
+  .cat-title { font-size: 0.85rem; font-weight: 600; color: var(--text); }
+
+  /* ─── ROUTINE / CHECKLIST VIEW ─── */
+  .task-list { margin-top: 10px; display: flex; flex-direction: column; gap: 10px; }
+  .task-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 14px 16px;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    transition: all 0.3s ease;
+  }
+  .task-card.completed { background: rgba(31, 43, 64, 0.5); border-color: transparent; opacity: 0.7; }
+  .task-card.completed .task-title { text-decoration: line-through; color: var(--text2); }
+  
+  /* Custom Checkbox */
+  .check-circle {
+    width: 26px;
+    height: 26px;
+    border: 2px solid var(--text3);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.2s;
+    flex-shrink: 0;
+  }
+  .task-card.completed .check-circle { background: var(--accent); border-color: var(--accent); }
+  .check-circle::after {
+    content: '✓';
+    color: #0a0f1a;
+    font-size: 14px;
+    font-weight: 800;
+    opacity: 0;
+    transition: opacity 0.2s;
+  }
+  .task-card.completed .check-circle::after { opacity: 1; }
+  
+  .task-content { flex: 1; display: flex; flex-direction: column; justify-content: center; }
+  .task-title { font-weight: 600; font-size: 0.95rem; color: var(--text); transition: all 0.2s; }
+  .task-icon { font-size: 1.2rem; flex-shrink: 0; }
+  
+  .task-del {
+    background: none;
+    border: none;
+    color: var(--text3);
+    font-size: 1.1rem;
+    padding: 6px;
+    cursor: pointer;
+    transition: color 0.2s;
+  }
+  .task-del:active, .task-del:hover { color: var(--red); }
+  
+  .add-custom-wrap { display: flex; gap: 8px; margin-bottom: 16px; }
+  .add-custom-input {
+    flex: 1;
+    background: var(--card2);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 12px 14px;
+    color: var(--text);
+    font-family: var(--font-body);
+    font-size: 0.9rem;
+    outline: none;
+  }
+  .add-custom-input:focus { border-color: var(--accent); }
+  .btn-add {
+    background: var(--accent);
+    color: #0a0f1a;
+    border: none;
+    border-radius: 10px;
+    padding: 0 16px;
+    font-weight: 700;
+    font-size: 1.2rem;
+    cursor: pointer;
+  }
+
+  .empty-state { text-align: center; padding: 40px 20px; color: var(--text2); font-size: 0.9rem; }
+  .empty-state .e-icon { font-size: 3rem; margin-bottom: 12px; }
+
+  /* ─── SETTINGS ─── */
+  .settings-section { margin-bottom: 18px; }
+  .settings-label { font-size: 0.8rem; color: var(--text2); margin-bottom: 6px; font-weight: 600; text-transform: uppercase; }
+  .settings-input {
+    width: 100%;
+    background: var(--card2);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 14px;
+    color: var(--text);
+    font-family: var(--font-body);
+    font-size: 0.95rem;
+    outline: none;
+    transition: border-color 0.2s;
+  }
+  .settings-input:focus { border-color: var(--accent); }
+  .btn-save {
+    width: 100%;
+    padding: 16px;
+    background: var(--accent);
+    color: #0a0f1a;
+    border: none;
+    border-radius: var(--radius-sm);
+    font-family: var(--font-head);
+    font-size: 1rem;
+    font-weight: 700;
+    cursor: pointer;
+    box-shadow: var(--glow);
+    transition: all 0.2s;
+    margin-top: 10px;
+  }
+  .btn-save:active { transform: scale(0.98); }
+
+  /* ─── TOAST ─── */
+  .toast {
+    position: fixed;
+    top: 20px;
+    left: 50%;
+    transform: translateX(-50%) translateY(-80px);
+    background: var(--card);
+    border: 1px solid var(--accent);
+    color: var(--text);
+    padding: 12px 20px;
+    border-radius: 12px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    z-index: 9999;
+    transition: transform 0.35s cubic-bezier(0.4,0,0.2,1);
+    white-space: nowrap;
+    box-shadow: var(--shadow);
+  }
+  .toast.show { transform: translateX(-50%) translateY(0); }
+
+  /* ─── CONFETTI ─── */
+  .confetti {
+    position: absolute;
+    width: 8px;
+    height: 8px;
+    background-color: var(--accent);
+    opacity: 0;
+  }
+</style>
+</head>
+<body>
+
+<div id="app">
+  <div class="top-bar">
+    <div class="logo">JB-<span>Routine</span></div>
+    <div class="streak-badge" id="streakBadge">🔥 1 Tag</div>
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+  <div class="view active" id="view-dashboard">
+    <div class="section-pad">
+      <div class="greeting">
+        <span id="greetText">Guten Morgen</span>,<br>
+        <span id="greetName" style="color:var(--accent)">Boss</span> 👋
+        <span class="sub" id="greetDate"></span>
+      </div>
+    </div>
+
+    <div style="padding: 14px 16px 0;">
+      <div class="card">
+        <div class="card-title">Tagesfortschritt</div>
+        <div class="ring-wrap">
+          <svg class="ring-svg" width="100" height="100" viewBox="0 0 100 100">
+            <circle class="ring-bg" cx="50" cy="50" r="42"/>
+            <circle class="ring-fill" id="ringFill" cx="50" cy="50" r="42"
+              stroke-dasharray="263.89" stroke-dashoffset="263.89" stroke="var(--accent)"/>
+          </svg>
+          <div class="ring-info">
+            <div class="ring-kcal"><span id="progPercent" style="font-size: 2.2rem; font-weight:800; color:var(--accent);">0</span><span>%</span></div>
+            <div class="ring-label">Erledigt</div>
+            <div class="ring-remaining" id="progText">Lass uns starten!</div>
+          </div>
+        </div>
+        
+        <div class="stats-row">
+          <div class="stat-box">
+            <div class="val" id="statTotal">0</div>
+            <div class="lbl">Geplant</div>
+          </div>
+          <div class="stat-box">
+            <div class="val" id="statDone" style="color:var(--accent)">0</div>
+            <div class="lbl">Geschafft</div>
+          </div>
+          <div class="stat-box">
+            <div class="val" id="statOpen" style="color:var(--orange)">0</div>
+            <div class="lbl">Offen</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="motiv-card" id="motivCard">
+        <div class="motiv-emoji" id="motivEmoji">💪</div>
+        <div>
+          <div class="motiv-text" id="motivText">Zeit durchzustarten!</div>
+          <div class="motiv-sub" id="motivSub">Checke deine erste Aufgabe ab.</div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">Hydration</div>
+        <div class="water-info">
+          <div class="water-val"><span id="waterMl">0</span><span style="font-size:0.85rem;color:var(--text2);margin-left:4px">ml</span></div>
+          <div style="font-size:0.85rem;color:var(--text2); font-weight:500;">Ziel: <span id="waterGoalLbl">2000</span>ml</div>
+        </div>
+        <div class="water-bar-bg"><div class="water-bar-fill" id="waterBar" style="width:0%"></div></div>
+        <div class="water-btns">
+          <button class="water-btn" onclick="addWater(250)">+ 250 ml</button>
+          <button class="water-btn" onclick="addWater(500)">+ 500 ml</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="view" id="view-catalog">
+    <div class="section-pad" style="padding: 16px 16px 0;">
+      <div style="font-family:var(--font-head);font-size:1.5rem;font-weight:800;margin-bottom:6px;">Katalog 📚</div>
+      <div style="color:var(--text2); font-size:0.9rem; margin-bottom:16px;">Tippe auf eine Gewohnheit, um sie zu deiner heutigen Routine hinzuzufügen.</div>
+      
+      <div class="catalog-grid" id="catalogGrid">
+        </div>
+    </div>
+  </div>
+
+  <div class="view" id="view-routine">
+    <div class="section-pad" style="padding:16px 16px 0;">
+      <div style="font-family:var(--font-head);font-size:1.5rem;font-weight:800;margin-bottom:16px;">Deine Routine ☑️</div>
+      
+      <div class="add-custom-wrap">
+        <input type="text" id="customTaskInput" class="add-custom-input" placeholder="Eigene Aufgabe eintragen...">
+        <button class="btn-add" onclick="addCustomTask()">+</button>
+      </div>
+
+      <div class="task-list" id="routineList">
+        </div>
+    </div>
+  </div>
+
+  <div class="view" id="view-settings">
+    <div class="section-pad" style="padding:16px 16px 0;">
+      <div style="font-family:var(--font-head);font-size:1.5rem;font-weight:800;margin-bottom:16px;">Einstellungen ⚙️</div>
+
+      <div class="card">
+        <div class="card-title">Profil & Ziele</div>
+        <div class="settings-section">
+          <div class="settings-label">Dein Name</div>
+          <input class="settings-input" id="sName" placeholder="Wie sollen wir dich nennen?">
+        </div>
+        <div class="settings-section">
+          <div class="settings-label">Wasser-Ziel (ml)</div>
+          <input class="settings-input" id="sWaterGoal" type="number" placeholder="z.B. 2500">
+        </div>
+        <button class="btn-save" onclick="saveSettings()">Speichern</button>
+        <button class="btn-save" style="background:var(--card2); color:var(--red); margin-top:12px;" onclick="resetDay()">Tag zurücksetzen</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="tab-bar">
+    <button class="tab-btn active" onclick="switchTab('dashboard', this)">
+      <span class="icon">🏠</span><span>Dash</span>
+    </button>
+    <button class="tab-btn" onclick="switchTab('catalog', this)">
+      <span class="icon">📚</span><span>Katalog</span>
+    </button>
+    <button class="tab-btn" onclick="switchTab('routine', this)">
+      <span class="icon">☑️</span><span>Routine</span>
+    </button>
+    <button class="tab-btn" onclick="switchTab('settings', this)">
+      <span class="icon">⚙️</span><span>Setup</span>
+    </button>
+  </div>
+</div>
+
+<script>
+  // ─── DATENSTRUKTUR & STATE ───
+  let state = {
+    name: "Boss",
+    waterGoal: 2000,
+    waterCurrent: 0,
+    streak: 1,
+    lastDate: new Date().toDateString(),
+    tasks: [
+      { id: Date.now()+1, text: "Bett machen", icon: "🛏️", done: false },
+      { id: Date.now()+2, text: "Glas Wasser trinken", icon: "💧", done: false }
+    ]
+  };
+
+  const catalogItems = [
+    { text: "Meditation (10 Min)", icon: "🧘" },
+    { text: "Workout", icon: "💪" },
+    { text: "Lesen (15 Seiten)", icon: "📚" },
+    { text: "Spazieren (30 Min)", icon: "🚶" },
+    { text: "Kein Social Media", icon: "📱" },
+    { text: "Vitamine nehmen", icon: "💊" },
+    { text: "Journaling", icon: "✍️" },
+    { text: "Dehnen / Yoga", icon: "🤸" }
+  ];
+
+  // ─── INITIALISIERUNG ───
+  function init() {
+    loadData();
+    checkNewDay();
+    updateGreeting();
+    renderCatalog();
+    renderRoutine();
+    updateDashboard();
+    
+    // Set Settings Values
+    document.getElementById('sName').value = state.name;
+    document.getElementById('sWaterGoal').value = state.waterGoal;
+  }
+
+  // ─── DATA MANAGEMENT ───
+  function loadData() {
+    const saved = localStorage.getItem('jbRoutineData');
+    if (saved) state = JSON.parse(saved);
+  }
+  
+  function saveData() {
+    localStorage.setItem('jbRoutineData', JSON.stringify(state));
+    updateDashboard();
+  }
+
+  function checkNewDay() {
+    const today = new Date().toDateString();
+    if (state.lastDate !== today) {
+      // Reset daily progress
+      state.waterCurrent = 0;
+      state.tasks.forEach(t => t.done = false);
+      state.lastDate = today;
+      state.streak += 1; // Simplistic streak logic
+      saveData();
+    }
+  }
+
+  function resetDay() {
+    if(confirm("Möchtest du deinen heutigen Fortschritt wirklich zurücksetzen?")) {
+      state.waterCurrent = 0;
+      state.tasks.forEach(t => t.done = false);
+      saveData();
+      renderRoutine();
+      showToast("Tag zurückgesetzt");
+    }
+  }
+
+  // ─── NAVIGATION ───
+  function switchTab(tabId, btnElement) {
+    document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    
+    document.getElementById(`view-${tabId}`).classList.add('active');
+    btnElement.classList.add('active');
+    window.scrollTo(0, 0);
+  }
+
+  // ─── UI UPDATES ───
+  function updateGreeting() {
+    const hour = new Date().getHours();
+    let text = "Guten Abend";
+    if (hour < 11) text = "Guten Morgen";
+    else if (hour < 18) text = "Hallo";
+    
+    const options = { weekday: 'long', month: 'short', day: 'numeric' };
+    const dateStr = new Date().toLocaleDateString('de-DE', options);
+    
+    document.getElementById('greetText').innerText = text;
+    document.getElementById('greetName').innerText = state.name;
+    document.getElementById('greetDate').innerText = dateStr;
+    document.getElementById('streakBadge').innerText = `🔥 ${state.streak} Tag(e)`;
+  }
+
+  function updateDashboard() {
+    // Water
+    document.getElementById('waterMl').innerText = state.waterCurrent;
+    document.getElementById('waterGoalLbl').innerText = state.waterGoal;
+    const waterPct = Math.min((state.waterCurrent / state.waterGoal) * 100, 100) || 0;
+    document.getElementById('waterBar').style.width = `${waterPct}%`;
+
+    // Tasks Progress
+    const total = state.tasks.length;
+    const done = state.tasks.filter(t => t.done).length;
+    const open = total - done;
+    const pct = total === 0 ? 0 : Math.round((done / total) * 100);
+
+    document.getElementById('statTotal').innerText = total;
+    document.getElementById('statDone').innerText = done;
+    document.getElementById('statOpen').innerText = open;
+    
+    // Animate Ring (Circle length is ~263.89)
+    const ringOffset = 263.89 - (263.89 * (pct / 100));
+    document.getElementById('ringFill').style.strokeDashoffset = ringOffset;
+    
+    // Count up animation for percent
+    animateValue("progPercent", parseInt(document.getElementById('progPercent').innerText), pct, 600);
+
+    // Motivational Logic
+    const motivCard = document.getElementById('motivCard');
+    const mEmoji = document.getElementById('motivEmoji');
+    const mText = document.getElementById('motivText');
+    const mSub = document.getElementById('motivSub');
+
+    motivCard.classList.remove('success');
+
+    if (total === 0) {
+      document.getElementById('progText').innerText = "Keine Aufgaben";
+      mEmoji.innerText = "👀";
+      mText.innerText = "Routine leer!";
+      mSub.innerText = "Füge Aufgaben aus dem Katalog hinzu.";
+    } else if (pct === 0) {
+      document.getElementById('progText').innerText = "Lass uns starten!";
+      mEmoji.innerText = "🚀";
+      mText.innerText = "Dein Tag beginnt!";
+      mSub.innerText = "Hol dir deinen ersten Haken.";
+    } else if (pct < 50) {
+      document.getElementById('progText').innerText = "Bleib dran!";
+      mEmoji.innerText = "🔥";
+      mText.innerText = "Guter Start!";
+      mSub.innerText = "Bleib im Flow, du machst das toll.";
+    } else if (pct < 100) {
+      document.getElementById('progText').innerText = "Fast geschafft!";
+      mEmoji.innerText = "⚡";
+      mText.innerText = "Endspurt!";
+      mSub.innerText = "Nur noch ein paar Aufgaben übrig.";
+    } else {
+      document.getElementById('progText').innerText = "Alles erledigt!";
+      motivCard.classList.add('success');
+      mEmoji.innerText = "🏆";
+      mText.innerText = "Routine Master!";
+      mSub.innerText = "Du hast alle Aufgaben abgeschlossen.";
+      if(pct === 100 && parseInt(document.getElementById('progPercent').innerText) < 100) {
+          triggerConfetti();
+      }
+    }
+  }
+
+  // ─── CATALOG LOGIC ───
+  function renderCatalog() {
+    const grid = document.getElementById('catalogGrid');
+    grid.innerHTML = '';
+    catalogItems.forEach(item => {
+      const div = document.createElement('div');
+      div.className = 'catalog-item';
+      div.innerHTML = `<div class="cat-icon">${item.icon}</div><div class="cat-title">${item.text}</div>`;
+      div.onclick = () => addFromCatalog(item.text, item.icon);
+      grid.appendChild(div);
+    });
+  }
+
+  function addFromCatalog(text, icon) {
+    // Check if exists
+    if(state.tasks.some(t => t.text === text)) {
+      showToast("Bereits in der Routine!");
+      return;
+    }
+    state.tasks.push({ id: Date.now(), text, icon, done: false });
+    saveData();
+    renderRoutine();
+    showToast(`"${text}" hinzugefügt!`);
+  }
+
+  // ─── ROUTINE LOGIC ───
+  function renderRoutine() {
+    const list = document.getElementById('routineList');
+    list.innerHTML = '';
+    
+    if (state.tasks.length === 0) {
+      list.innerHTML = `
+        <div class="empty-state">
+          <div class="e-icon">🌱</div>
+          <div>Deine Routine ist noch leer.<br>Füge Aufgaben oben oder aus dem Katalog hinzu.</div>
+        </div>`;
+      return;
+    }
+
+    // Sort: open tasks first, done tasks bottom
+    const sortedTasks = [...state.tasks].sort((a,b) => (a.done === b.done)? 0 : a.done ? 1 : -1);
+
+    sortedTasks.forEach(task => {
+      const div = document.createElement('div');
+      div.className = `task-card ${task.done ? 'completed' : ''}`;
+      div.innerHTML = `
+        <div class="check-circle" onclick="toggleTask(${task.id})"></div>
+        <div class="task-icon">${task.icon}</div>
+        <div class="task-content">
+          <div class="task-title">${task.text}</div>
+        </div>
+        <button class="task-del" onclick="deleteTask(${task.id})">🗑️</button>
+      `;
+      list.appendChild(div);
+    });
+  }
+
+  function addCustomTask() {
+    const input = document.getElementById('customTaskInput');
+    const text = input.value.trim();
+    if(!text) return;
+    
+    state.tasks.push({ id: Date.now(), text, icon: "📌", done: false });
+    input.value = '';
+    saveData();
+    renderRoutine();
+  }
+
+  function toggleTask(id) {
+    const task = state.tasks.find(t => t.id === id);
+    if(task) {
+      task.done = !task.done;
+      saveData();
+      renderRoutine();
+    }
+  }
+
+  function deleteTask(id) {
+    state.tasks = state.tasks.filter(t => t.id !== id);
+    saveData();
+    renderRoutine();
+  }
+
+  function addWater(amount) {
+    state.waterCurrent += amount;
+    saveData();
+    showToast(`+${amount}ml getrunken 💧`);
+  }
+
+  // ─── SETTINGS ───
+  function saveSettings() {
+    const name = document.getElementById('sName').value;
+    const waterGoal = parseInt(document.getElementById('sWaterGoal').value);
+    
+    if(name) state.name = name;
+    if(waterGoal) state.waterGoal = waterGoal;
+    
+    saveData();
+    updateGreeting();
+    showToast("Einstellungen gespeichert!");
+  }
+
+  // ─── UTILS ───
+  function showToast(msg) {
+    const t = document.getElementById('toast');
+    t.innerText = msg;
+    t.classList.add('show');
+    setTimeout(() => t.classList.remove('show'), 2500);
+  }
+
+  function animateValue(id, start, end, duration) {
+    if (start === end) return;
+    const obj = document.getElementById(id);
+    let startTimestamp = null;
+    const step = (timestamp) => {
+      if (!startTimestamp) startTimestamp = timestamp;
+      const progress = Math.min((timestamp - startTimestamp) / duration, 1);
+      obj.innerHTML = Math.floor(progress * (end - start) + start);
+      if (progress < 1) window.requestAnimationFrame(step);
+    };
+    window.requestAnimationFrame(step);
+  }
+
+  function triggerConfetti() {
+    const colors = ['#A8FF78', '#78ffd6', '#f0f4f8', '#ffd43b'];
+    for(let i=0; i<40; i++) {
+      const conf = document.createElement('div');
+      conf.className = 'confetti';
+      conf.style.left = Math.random() * 100 + 'vw';
+      conf.style.top = -10 + 'px';
+      conf.style.backgroundColor = colors[Math.floor(Math.random() * colors.length)];
+      conf.style.borderRadius = Math.random() > 0.5 ? '50%' : '2px';
+      document.body.appendChild(conf);
+
+      const anim = conf.animate([
+        { transform: `translate3d(0,0,0) rotate(0)`, opacity: 1 },
+        { transform: `translate3d(${Math.random()*100 - 50}px, ${window.innerHeight}px, 0) rotate(${Math.random()*360}deg)`, opacity: 0 }
+      ], {
+        duration: Math.random() * 1500 + 1000,
+        easing: 'cubic-bezier(.37,0,.63,1)'
+      });
+
+      anim.onfinish = () => conf.remove();
+    }
+  }
+
+  // Init
+  init();
+</script>
+</body>
+</html>
